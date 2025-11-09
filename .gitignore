@@ -1,0 +1,38 @@
+# API Keys and Secrets
+.env
+*.env
+
+# API Response Samples (may contain sensitive data)
+*_response.json
+odds_api_*.json
+
+# Cache directory
+cache/
+
+# Generated graphics
+graphics/
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development diary - local context for Claude
+dev_diary/
