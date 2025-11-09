@@ -53,29 +53,28 @@ def create_value_picks_graphic(opportunities, games_data_map=None, output_filena
         print("No picks to display")
         return None
 
-    # X-optimized: 1200x675 landscape (16:9 aspect ratio)
+    # Mobile-optimized: Square format (1080x1080) for better mobile viewing
     # Dynamically size based on number of picks
     num_picks = len(picks)
-    fig_width = 12
-    fig_height = 2 + (num_picks * 0.8)  # Scale height with number of picks
+    fig_width = 10.8  # 1080px at 100dpi
+    fig_height = 10.8  # Square for mobile optimization
 
     fig, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor='#0f1419')
     ax.set_facecolor('#0f1419')
 
-    # Title - smaller, cleaner
+    # Title - brand name and date
     date_str = datetime.now().strftime('%b %d')
-    ax.text(0.5, 0.98, f'90%ERS - {date_str}',
-            ha='center', va='top', fontsize=18, fontweight='bold',
+    ax.text(0.5, 0.985, f'@FlooorGang - {date_str}',
+            ha='center', va='top', fontsize=24, fontweight='bold',
             color='white', transform=ax.transAxes)
 
-    # Starting Y position - adjust based on number of picks
-    y_start = 0.90
-    available_space = 0.80  # 80% of vertical space for picks
-    row_spacing = available_space / max(num_picks, 1)
+    # Starting Y position - proper spacing from title
+    y_start = 0.88
+    row_height = 0.135  # Fixed height per row
 
     # Draw each pick as a row
     for idx, pick in enumerate(picks):
-        y_pos = y_start - (idx * row_spacing)
+        y_pos = y_start - (idx * row_height)
 
         # Get game history AND actual values
         game_history = None
@@ -98,19 +97,14 @@ def create_value_picks_graphic(opportunities, games_data_map=None, output_filena
 
         draw_pick_row(ax, pick, y_pos, game_history, game_values, idx)
 
-    # Footer - simple
-    ax.text(0.5, 0.02, 'Green = Hit | Red = Miss',
-            ha='center', fontsize=9, color='#8899a6',
-            transform=ax.transAxes)
-
     # Remove axes
     ax.axis('off')
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
 
-    # Save
-    plt.tight_layout()
-    plt.savefig(filepath, dpi=300, bbox_inches='tight', facecolor='#0f1419')
+    # Save with proper padding (no tight bbox which crops incorrectly)
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    plt.savefig(filepath, dpi=100, bbox_inches=None, facecolor='#0f1419', pad_inches=0)
     plt.close()
 
     print(f"✅ Graphic saved: {filepath}")
@@ -135,12 +129,13 @@ def draw_pick_row(ax, pick, y_pos, game_history, game_values, row_idx):
     else:
         bg_color = '#0f1419'
 
-    # Background - bigger for better spacing
+    # Background - no spacing between rows
+    bg_height = 0.135
     bg = mpatches.Rectangle(
-        (0.02, y_pos - 0.07), 0.96, 0.12,
+        (0.02, y_pos - 0.070), 0.96, bg_height,
         facecolor=bg_color,
         edgecolor='#2a2f3e',
-        linewidth=1,
+        linewidth=0.5,
         transform=ax.transAxes
     )
     ax.add_patch(bg)
@@ -153,18 +148,19 @@ def draw_pick_row(ax, pick, y_pos, game_history, game_values, row_idx):
     full_name = pick['player']
 
     label_text = f"{full_name} | {stat_abbr} {pick['floor']:.0f}+"
-    ax.text(0.08, y_pos - 0.01,
+    # Center text vertically in the row
+    ax.text(0.04, y_pos,
             label_text,
-            fontsize=14, fontweight='bold', color='white',
+            fontsize=15, fontweight='bold', color='white',
             va='center', transform=ax.transAxes)
 
-    # Right side: Checkbox grid with VALUES inside (start further right)
+    # Right side: Checkbox grid with VALUES inside (centered with text)
     if game_history is not None and len(game_history) > 0:
-        draw_checkbox_grid(ax, game_history, game_values, y_pos, start_x_override=0.45)
+        draw_checkbox_grid(ax, game_history, game_values, y_pos, start_x_override=0.48)
     else:
         # No game data available
-        ax.text(0.95, y_pos - 0.01, 'No data',
-                fontsize=8, color='#8899a6', ha='right', va='center',
+        ax.text(0.96, y_pos, 'No data',
+                fontsize=10, color='#8899a6', ha='right', va='center',
                 transform=ax.transAxes)
 
 
@@ -180,8 +176,8 @@ def draw_checkbox_grid(ax, game_history, game_values, y_pos, start_x_override=No
         start_x_override: Optional fixed start position instead of right-aligned
     """
     num_games = len(game_history)  # Show all games
-    box_size = 0.04  # Smaller boxes to fit more
-    spacing = 0.045   # Tighter spacing
+    box_size = 0.038  # Optimized for square format
+    spacing = 0.043   # Tighter spacing for square layout
 
     if start_x_override:
         start_x = start_x_override
@@ -201,9 +197,9 @@ def draw_checkbox_grid(ax, game_history, game_values, y_pos, start_x_override=No
             color = '#ef4444'  # Red
             text_color = 'white'
 
-        # Draw checkbox
+        # Draw checkbox centered vertically with text
         box = mpatches.Rectangle(
-            (x_pos, y_pos - 0.035), box_size, box_size,
+            (x_pos, y_pos - box_size/2), box_size, box_size,
             facecolor=color,
             edgecolor='white',
             linewidth=1.5,
@@ -211,10 +207,10 @@ def draw_checkbox_grid(ax, game_history, game_values, y_pos, start_x_override=No
         )
         ax.add_patch(box)
 
-        # Add value text inside box (smaller font for smaller boxes)
-        ax.text(x_pos + box_size/2, y_pos - 0.035 + box_size/2,
+        # Add value text inside box centered
+        ax.text(x_pos + box_size/2, y_pos,
                 f'{int(value)}',
-                fontsize=7, fontweight='bold', color=text_color,
+                fontsize=9, fontweight='bold', color=text_color,
                 ha='center', va='center',
                 transform=ax.transAxes)
 

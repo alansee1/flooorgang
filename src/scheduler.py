@@ -178,7 +178,7 @@ def should_run_now():
 
 
 def run_scanner():
-    """Execute scanner with --fresh flag"""
+    """Execute scanner with --fresh and --tweet flags"""
     log("="*60)
     log("RUNNING SCANNER")
     log("="*60)
@@ -189,7 +189,7 @@ def run_scanner():
         scanner_path = os.path.join(project_root, 'src', 'scanner.py')
 
         result = subprocess.run(
-            [sys.executable, scanner_path, '--fresh'],
+            [sys.executable, scanner_path, '--fresh', '--tweet'],
             cwd=project_root,
             capture_output=True,
             text=True,

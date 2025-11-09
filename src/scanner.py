@@ -9,6 +9,7 @@ from src.odds_cache import save_odds_to_cache, load_odds_from_cache, has_cache, 
 from src.player_stats_cache import save_player_stats, load_player_stats
 from src.graphics_generator import create_value_picks_graphic
 from src.database import save_scanner_results
+from src.twitter_poster import TwitterPoster
 import numpy as np
 import time
 import sys
@@ -306,8 +307,30 @@ def main():
         print("\nStep 4: Generating graphic...")
         graphic_path = create_value_picks_graphic(opportunities, games_data_map)
         if graphic_path:
-            print(f"\n📸 Graphic ready to tweet!")
-            print(f"   {graphic_path}")
+            print(f"\n📸 Graphic generated: {graphic_path}")
+
+            # Step 6: Post to Twitter (if --tweet flag is set)
+            if '--tweet' in sys.argv:
+                print("\n🐦 Posting to Twitter...")
+                try:
+                    poster = TwitterPoster()
+
+                    # Generate tweet text
+                    num_picks = len(opportunities)
+                    tweet_text = f"🏀 {num_picks} high-confidence picks for today\n\nFloor stats = 90th percentile over last 10 games\n\n#NBA #PropBets #SportsBetting"
+
+                    # Post tweet with graphic
+                    tweet_id = poster.post_with_image(tweet_text, graphic_path)
+
+                    if tweet_id:
+                        print(f"✅ Posted to @FlooorGang!")
+                    else:
+                        print(f"❌ Failed to post to Twitter")
+
+                except Exception as e:
+                    print(f"⚠️  Twitter posting failed: {e}")
+            else:
+                print("💡 Add --tweet flag to auto-post to Twitter")
     else:
         print("\n⚠️  No opportunities to visualize")
 
