@@ -2,7 +2,11 @@
 Test the scheduler logic without actually running the scanner
 """
 
-from scheduler import get_first_game_time, should_run_scanner, has_run_today
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from src.scheduler import get_first_game_time, should_run_scanner, has_run_today
 from datetime import datetime, timedelta
 
 

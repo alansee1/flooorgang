@@ -3,8 +3,12 @@ Baby Run-Through with REAL Betting Odds
 Full workflow: Player stats → 90%er floors → Real odds → Value detection
 """
 
-from baby_runthrough import get_player_stats, calculate_90er_floors, compare_to_betting_lines
-from odds_fetcher import OddsFetcher
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from src.player_stats import get_player_stats, calculate_90er_floors, compare_to_betting_lines
+from src.odds_fetcher import OddsFetcher
 import time
 
 

@@ -1,8 +1,9 @@
 #!/bin/bash
 # Setup cron job for NBA 90%ers scheduler
 
-# Get absolute path to project directory
-PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Get absolute path to project directory (parent of scripts/)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 
 echo "🏀 NBA 90%ers - Cron Setup"
 echo "=========================="
@@ -10,8 +11,8 @@ echo "Project directory: $PROJECT_DIR"
 echo ""
 
 # Create cron entries (9 AM ET = 14:00 UTC, adjust for your timezone)
-CRON_FETCH="0 14 * * * cd $PROJECT_DIR && /usr/bin/python3 scheduler.py --fetch-schedule >> logs/scheduler.log 2>&1"
-CRON_CHECK="*/30 * * * * cd $PROJECT_DIR && /usr/bin/python3 scheduler.py >> logs/scheduler.log 2>&1"
+CRON_FETCH="0 14 * * * cd $PROJECT_DIR && /usr/bin/python3 src/scheduler.py --fetch-schedule >> logs/scheduler.log 2>&1"
+CRON_CHECK="*/30 * * * * cd $PROJECT_DIR && /usr/bin/python3 src/scheduler.py >> logs/scheduler.log 2>&1"
 
 echo "This will add two cron jobs:"
 echo ""

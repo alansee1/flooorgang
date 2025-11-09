@@ -184,9 +184,13 @@ def run_scanner():
     log("="*60)
 
     try:
+        # Get project root (parent of src/)
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scanner_path = os.path.join(project_root, 'src', 'scanner.py')
+
         result = subprocess.run(
-            [sys.executable, 'scanner.py', '--fresh'],
-            cwd=os.path.dirname(os.path.abspath(__file__)),
+            [sys.executable, scanner_path, '--fresh'],
+            cwd=project_root,
             capture_output=True,
             text=True,
             timeout=600
