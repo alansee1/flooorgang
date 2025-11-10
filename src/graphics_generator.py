@@ -38,23 +38,20 @@ def create_value_picks_graphic(opportunities, games_data_map=None, output_filena
 
     filepath = os.path.join(OUTPUT_DIR, output_filename)
 
-    # Smart pick selection: All HIGH confidence + fill with MEDIUM up to 10 total
+    # Smart pick selection: All HIGH confidence picks
     high_conf = [o for o in opportunities if o['confidence'] == 'HIGH']
-    med_conf = [o for o in opportunities if o['confidence'] == 'MEDIUM']
 
     # Combine and sort by player name (so same player's picks are together)
-    all_picks = high_conf + med_conf
+    all_picks = high_conf
     all_picks.sort(key=lambda x: (x['player'], x['stat']))  # Sort by player name, then stat
 
-    # Take top 10
-    picks = all_picks[:10]
+    picks = all_picks
 
     if not picks:
         print("No picks to display")
         return None
 
     # Mobile-optimized: Square format (1080x1080) for better mobile viewing
-    # Dynamically size based on number of picks
     num_picks = len(picks)
     fig_width = 10.8  # 1080px at 100dpi
     fig_height = 10.8  # Square for mobile optimization
@@ -70,7 +67,10 @@ def create_value_picks_graphic(opportunities, games_data_map=None, output_filena
 
     # Starting Y position - proper spacing from title
     y_start = 0.89
-    row_height = 0.087  # Smaller height to fit 10 picks
+    # Dynamically calculate row height based on number of picks
+    # Available space from y_start (0.89) to bottom margin (0.05) = 0.84
+    available_space = 0.84
+    row_height = available_space / num_picks if num_picks > 0 else 0.087
 
     # Draw each pick as a row
     for idx, pick in enumerate(picks):
@@ -79,7 +79,12 @@ def create_value_picks_graphic(opportunities, games_data_map=None, output_filena
         # Get game history AND actual values
         game_history = None
         game_values = None
-        if games_data_map and pick['player'] in games_data_map:
+
+        # Check if this is a team pick
+        is_team = 'team' in pick and pick.get('team') == pick.get('player')
+
+        if not is_team and games_data_map and pick['player'] in games_data_map:
+            # Player pick - show player game history
             games_df = games_data_map[pick['player']]
             stat = pick['stat']
             threshold = pick['floor']
@@ -94,8 +99,9 @@ def create_value_picks_graphic(opportunities, games_data_map=None, output_filena
 
             game_values = last_games[stat].values  # Actual stat values
             game_history = game_values >= threshold  # Boolean array (hit/miss)
+        # For team picks, we don't show game history (would need separate team data)
 
-        draw_pick_row(ax, pick, y_pos, game_history, game_values, idx)
+        draw_pick_row(ax, pick, y_pos, game_history, game_values, idx, row_height)
 
     # Remove axes
     ax.axis('off')
@@ -111,7 +117,7 @@ def create_value_picks_graphic(opportunities, games_data_map=None, output_filena
     return filepath
 
 
-def draw_pick_row(ax, pick, y_pos, game_history, game_values, row_idx):
+def draw_pick_row(ax, pick, y_pos, game_history, game_values, row_idx, row_height):
     """
     Draw a single pick row with checkbox game history
 
@@ -122,6 +128,7 @@ def draw_pick_row(ax, pick, y_pos, game_history, game_values, row_idx):
         game_history: Boolean array of last 10 games (True = hit, False = miss)
         game_values: Actual stat values for each game
         row_idx: Row index for alternating colors
+        row_height: Height of each row (dynamically calculated)
     """
     # Alternate row background for readability
     if row_idx % 2 == 0:
@@ -129,8 +136,8 @@ def draw_pick_row(ax, pick, y_pos, game_history, game_values, row_idx):
     else:
         bg_color = '#0f1419'
 
-    # Background - no spacing between rows
-    bg_height = 0.087
+    # Background - use the dynamically calculated row height
+    bg_height = row_height
     bg = mpatches.Rectangle(
         (0.02, y_pos - 0.044), 0.96, bg_height,
         facecolor=bg_color,
@@ -140,14 +147,28 @@ def draw_pick_row(ax, pick, y_pos, game_history, game_values, row_idx):
     )
     ax.add_patch(bg)
 
-    # Left side: Player | Stat | Floor
-    stat_map = {'PTS': 'PTS', 'REB': 'REB', 'AST': 'AST', 'FG3M': '3PM'}
+    # Left side: Player/Team | Stat | Floor/Ceiling
+    stat_map = {'PTS': 'PTS', 'REB': 'REB', 'AST': 'AST', 'FG3M': '3PM', 'STL': 'STL', 'BLK': 'BLK'}
     stat_abbr = stat_map.get(pick['stat'], pick['stat'])
+
+    # Check if this is a team pick
+    is_team = 'team' in pick and pick.get('team') == pick.get('player')
+    bet_type = pick.get('bet_type', 'OVER')
 
     # Use full name
     full_name = pick['player']
 
-    label_text = f"{full_name} | {stat_abbr} {pick['floor']:.0f}+"
+    # Format label based on whether it's a team or player pick
+    if is_team:
+        # Team pick - show bet type
+        if bet_type == 'OVER':
+            label_text = f"{full_name} | {stat_abbr} OVER {pick['line']:.1f}"
+        else:  # UNDER
+            label_text = f"{full_name} | {stat_abbr} UNDER {pick['line']:.1f}"
+    else:
+        # Player pick - show floor value
+        label_text = f"{full_name} | {stat_abbr} {pick['floor']:.0f}+"
+
     # Center text vertically in the row
     ax.text(0.04, y_pos,
             label_text,
