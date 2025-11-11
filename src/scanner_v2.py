@@ -10,6 +10,7 @@ from odds_fetcher_v2 import OddsFetcher
 from player_stats_v2 import PlayerStatsAnalyzer
 from team_stats_v2 import TeamStatsAnalyzer
 from database_v2 import save_scanner_results
+from graphics_generator_v2 import create_picks_graphic
 from typing import List, Dict
 from datetime import date
 
@@ -17,16 +18,18 @@ from datetime import date
 class Scanner:
     """Main scanner that finds betting opportunities"""
 
-    def __init__(self, odds_threshold: int = -500, save_to_db: bool = True, sport: str = 'nba', season: str = '2025-26'):
+    def __init__(self, odds_threshold: int = -500, save_to_db: bool = True, create_graphic: bool = True, sport: str = 'nba', season: str = '2025-26'):
         """
         Args:
             odds_threshold: Skip picks with odds worse than this (default -500)
             save_to_db: Save results to database (default True)
+            create_graphic: Generate graphic image (default True)
             sport: Sport type (default 'nba')
             season: Season identifier (default '2025-26')
         """
         self.odds_threshold = odds_threshold
         self.save_to_db = save_to_db
+        self.create_graphic = create_graphic
         self.sport = sport
         self.season = season
         self.odds_fetcher = OddsFetcher()
@@ -74,6 +77,7 @@ class Scanner:
         floors = player_analysis['floors']
         games = player_analysis['games']
         team_abbr = player_analysis.get('team_abbr')
+        history = player_analysis.get('history', {})
 
         for stat in ['PTS', 'REB', 'AST', 'FG3M']:
             # Check if we have lines for this stat
@@ -93,6 +97,9 @@ class Scanner:
             if best_line['odds'] < self.odds_threshold:
                 continue
 
+            # Get game history for this stat
+            game_history = history.get(stat, [])
+
             # This is a good pick!
             picks.append({
                 'player': player_name,
@@ -102,7 +109,8 @@ class Scanner:
                 'line': best_line['line'],
                 'odds': best_line['odds'],
                 'games': games,
-                'hit_rate': f"{games}/{games}"  # Floor = 100% by definition
+                'hit_rate': f"{games}/{games}",  # Floor = 100% by definition
+                'game_history': game_history
             })
 
         return picks
@@ -128,6 +136,7 @@ class Scanner:
         floor = team_analysis['floor']
         ceiling = team_analysis['ceiling']
         games = team_analysis['games']
+        points_history = team_analysis.get('points', [])
 
         # Check OVER bets (floor > line)
         over_lines = team_lines.get('over', [])
@@ -136,14 +145,18 @@ class Scanner:
         if lines_below_floor:
             best_over = max(lines_below_floor, key=lambda x: x['line'])
             if best_over['odds'] > self.odds_threshold:
+                from database_v2 import get_team_abbr
+                team_abbr = get_team_abbr(team_name, self.sport)
                 picks.append({
                     'team': team_name,
+                    'team_abbr': team_abbr,
                     'type': 'OVER',
                     'line': best_over['line'],
                     'odds': best_over['odds'],
                     'floor': floor,
                     'games': games,
-                    'hit_rate': f"{games}/{games}"
+                    'hit_rate': f"{games}/{games}",
+                    'game_history': points_history
                 })
 
         # Check UNDER bets (ceiling < line)
@@ -153,14 +166,18 @@ class Scanner:
         if lines_above_ceiling:
             best_under = min(lines_above_ceiling, key=lambda x: x['line'])
             if best_under['odds'] > self.odds_threshold:
+                from database_v2 import get_team_abbr
+                team_abbr = get_team_abbr(team_name, self.sport)
                 picks.append({
                     'team': team_name,
+                    'team_abbr': team_abbr,
                     'type': 'UNDER',
                     'line': best_under['line'],
                     'odds': best_under['odds'],
                     'ceiling': ceiling,
                     'games': games,
-                    'hit_rate': f"{games}/{games}"
+                    'hit_rate': f"{games}/{games}",
+                    'game_history': points_history
                 })
 
         return picks
@@ -300,6 +317,13 @@ class Scanner:
                 print(f"✓ Saved to database (run #{run_id})")
             else:
                 print("⚠️  Database save skipped (no Supabase credentials)")
+
+        # Step 7: Generate graphic
+        if self.create_graphic and all_picks:
+            print(f"\n🎨 STEP 7: Generating graphic...")
+            graphic_path = create_picks_graphic(all_picks)
+            if graphic_path:
+                print(f"✓ Graphic created: {graphic_path}")
 
         return all_picks
 

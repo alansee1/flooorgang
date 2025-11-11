@@ -168,6 +168,8 @@ def save_picks(
             ceiling = None
             # Use team_abbr from pick if available (from NBA API), otherwise try lookup
             team_abbr = pick.get('team_abbr') or get_team_abbr(entity_name, sport)
+            # Get game history (array of values)
+            game_history = pick.get('game_history', [])
         else:  # team pick
             entity_type = 'team'
             entity_name = pick['team']
@@ -177,6 +179,8 @@ def save_picks(
             ceiling = float(pick.get('ceiling', 0)) if 'ceiling' in pick else None
             # Get team abbreviation from team name
             team_abbr = get_team_abbr(entity_name, sport)
+            # Get team game history (points from recent games)
+            game_history = pick.get('game_history', [])
 
         db_pick = {
             'run_id': run_id,
@@ -194,6 +198,7 @@ def save_picks(
             'ceiling': ceiling,
             'games_analyzed': int(pick['games']),
             'hit_rate': pick['hit_rate'],
+            'game_history': game_history,
             'season': season
         }
 
