@@ -226,13 +226,13 @@ class OddsFetcher:
 
         return team_totals
 
-    def get_all_player_props(self, delay=0.6):
+    def get_all_player_props(self, delay=0.2):
         """
         Get player props for all today's games
         Returns dict: {player_name: {stat: line}}
 
         Args:
-            delay: Seconds to wait between API calls (respect rate limits)
+            delay: Seconds to wait between API calls (default 0.2s = 5 req/sec for paid tier)
         """
         print("\n" + "="*60)
         print("Fetching Player Props from The Odds API")
@@ -285,18 +285,18 @@ class OddsFetcher:
         print(f"Games scheduled: {self.games_scheduled}")
         print(f"Games with props: {self.games_with_props}")
         print(f"Total players with props: {len(all_props)}")
-        print(f"API Requests Remaining: {self.requests_remaining}/500 (Free Tier)")
+        print(f"API Requests Remaining: {self.requests_remaining}/20,000 (20K Plan)")
         print(f"{'='*60}\n")
 
         return all_props
 
-    def get_all_team_totals(self, delay=0.6):
+    def get_all_team_totals(self, delay=0.2):
         """
         Get team totals for all today's games
         Returns dict: {team_name: line}
 
         Args:
-            delay: Seconds to wait between API calls (respect rate limits)
+            delay: Seconds to wait between API calls (default 0.2s = 5 req/sec for paid tier)
         """
         print("\n" + "="*60)
         print("Fetching Team Totals from The Odds API")
@@ -337,7 +337,7 @@ class OddsFetcher:
         print(f"\n{'='*60}")
         print(f"Games with team totals: {games_with_totals_count}")
         print(f"Total teams with lines: {len(all_team_totals)}")
-        print(f"API Requests Remaining: {self.requests_remaining}/500 (Free Tier)")
+        print(f"API Requests Remaining: {self.requests_remaining}/20,000 (20K Plan)")
         print(f"{'='*60}\n")
 
         return all_team_totals
