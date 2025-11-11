@@ -6,6 +6,17 @@ Fetches team game history and calculates floor (min) and ceiling (max) points
 from nba_api.stats.endpoints import leaguegamefinder
 from typing import Dict, List, Optional
 import time
+import signal
+
+
+class TimeoutException(Exception):
+    """Exception raised when operation times out"""
+    pass
+
+
+def timeout_handler(signum, frame):
+    """Handler for timeout signal"""
+    raise TimeoutException("Operation timed out")
 
 
 class TeamStatsAnalyzer:
@@ -83,14 +94,22 @@ class TeamStatsAnalyzer:
             return None
 
         try:
-            # Fetch game log using LeagueGameFinder
-            gamefinder = leaguegamefinder.LeagueGameFinder(
-                team_id_nullable=team_id,
-                season_nullable=self.season,
-                season_type_nullable='Regular Season'
-            )
+            # Set 10 second timeout for NBA API call
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(10)
 
-            games_df = gamefinder.get_data_frames()[0]
+            try:
+                # Fetch game log using LeagueGameFinder
+                gamefinder = leaguegamefinder.LeagueGameFinder(
+                    team_id_nullable=team_id,
+                    season_nullable=self.season,
+                    season_type_nullable='Regular Season'
+                )
+
+                games_df = gamefinder.get_data_frames()[0]
+            finally:
+                # Cancel the alarm
+                signal.alarm(0)
 
             # Check minimum games
             if len(games_df) < self.min_games:
@@ -109,6 +128,9 @@ class TeamStatsAnalyzer:
                 'ceiling': max(points)    # For UNDER bets
             }
 
+        except TimeoutException:
+            print(f"    Timeout fetching stats for {team_name} (>10s)")
+            return None
         except Exception as e:
             print(f"    Error fetching stats for {team_name}: {e}")
             return None

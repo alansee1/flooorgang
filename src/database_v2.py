@@ -12,16 +12,29 @@ from typing import Dict, List, Optional
 # Load environment variables
 load_dotenv()
 
-# Initialize Supabase client
+# Supabase credentials (loaded once, client created on demand)
 supabase_url = os.getenv('SUPABASE_URL')
 supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+_supabase_client = None
 
-if not supabase_url or not supabase_key:
-    print("⚠️  Warning: Supabase credentials not found in .env file")
-    print("   Database storage will be skipped")
-    supabase = None
-else:
-    supabase: Client = create_client(supabase_url, supabase_key)
+def get_supabase_client() -> Optional[Client]:
+    """Lazy-load Supabase client to avoid import-time initialization issues"""
+    global _supabase_client
+
+    if _supabase_client is not None:
+        return _supabase_client
+
+    if not supabase_url or not supabase_key:
+        print("⚠️  Warning: Supabase credentials not found")
+        print("   Database storage will be skipped")
+        return None
+
+    try:
+        _supabase_client = create_client(supabase_url, supabase_key)
+        return _supabase_client
+    except Exception as e:
+        print(f"⚠️  Warning: Failed to create Supabase client: {e}")
+        return None
 
 
 # NBA Team Abbreviations
@@ -88,6 +101,7 @@ def create_scanner_run(sport: str, scan_date: date, game_date: Optional[date] = 
     Returns:
         run_id: ID of created run, or None if failed
     """
+    supabase = get_supabase_client()
     if not supabase:
         return None
 
@@ -120,6 +134,7 @@ def update_scanner_run(run_id: int, **kwargs):
         run_id: ID of run to update
         **kwargs: Fields to update (total_picks, entities_analyzed, etc.)
     """
+    supabase = get_supabase_client()
     if not supabase or not run_id:
         return
 
@@ -152,6 +167,7 @@ def save_picks(
     Returns:
         Number of picks saved
     """
+    supabase = get_supabase_client()
     if not supabase or not run_id or not picks:
         return 0
 

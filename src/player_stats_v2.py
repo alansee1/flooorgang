@@ -6,8 +6,19 @@ Fetches player game history from NBA API and calculates 10th percentile floor
 from nba_api.stats.endpoints import playergamelog
 from nba_api.stats.static import players
 import time
+import signal
 from typing import Dict, List, Optional
 import numpy as np
+
+
+class TimeoutException(Exception):
+    """Exception raised when operation times out"""
+    pass
+
+
+def timeout_handler(signum, frame):
+    """Handler for timeout signal"""
+    raise TimeoutException("Operation timed out")
 
 
 class PlayerStatsAnalyzer:
@@ -59,14 +70,22 @@ class PlayerStatsAnalyzer:
             return None
 
         try:
-            # Fetch game log
-            gamelog = playergamelog.PlayerGameLog(
-                player_id=player_id,
-                season=self.season,
-                season_type_all_star='Regular Season'
-            )
+            # Set 10 second timeout for NBA API call
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(10)
 
-            df = gamelog.get_data_frames()[0]
+            try:
+                # Fetch game log
+                gamelog = playergamelog.PlayerGameLog(
+                    player_id=player_id,
+                    season=self.season,
+                    season_type_all_star='Regular Season'
+                )
+
+                df = gamelog.get_data_frames()[0]
+            finally:
+                # Cancel the alarm
+                signal.alarm(0)
 
             # Check minimum games requirement
             if len(df) < self.min_games:
@@ -99,6 +118,9 @@ class PlayerStatsAnalyzer:
                 'FG3M': recent['FG3M'].tolist()
             }
 
+        except TimeoutException:
+            print(f"    Timeout fetching stats for {player_name} (>10s)")
+            return None
         except Exception as e:
             print(f"    Error fetching stats for {player_name}: {e}")
             return None
