@@ -95,7 +95,7 @@ def save_picks(run_id, picks, sport, scan_date, game_date=None, season='2025-26'
     # Transform picks to database format
     db_picks = []
     for pick in picks:
-        db_picks.append({
+        db_pick = {
             'run_id': run_id,
             'sport': sport,
             'scan_date': scan_date.isoformat() if isinstance(scan_date, date) else scan_date,
@@ -106,10 +106,17 @@ def save_picks(run_id, picks, sport, scan_date, game_date=None, season='2025-26'
             'floor': float(pick['floor']),
             'avg': float(pick['avg']),
             'confidence': pick.get('confidence', 'HIGH'),
+            'bet_type': pick.get('bet_type', 'OVER'),
             'lower_bound': float(pick.get('lower_bound', 0)),
             'upper_bound': float(pick.get('upper_bound', 0)),
             'season': season
-        })
+        }
+
+        # Add ceiling if present (for team UNDER bets)
+        if 'ceiling' in pick:
+            db_pick['ceiling'] = float(pick['ceiling'])
+
+        db_picks.append(db_pick)
 
     try:
         result = supabase.table('picks').insert(db_picks).execute()

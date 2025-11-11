@@ -79,7 +79,7 @@ class OddsFetcher:
         params = {
             'apiKey': self.api_key,
             'regions': 'us',
-            'markets': 'player_points,player_rebounds,player_assists,player_threes',
+            'markets': 'player_points,player_rebounds,player_assists,player_threes,player_steals,player_blocks',
             'oddsFormat': 'american',
         }
 
@@ -94,6 +94,31 @@ class OddsFetcher:
 
         event_data = response.json()
         return self._parse_player_props(event_data)
+
+    def get_team_totals_for_game(self, event_id):
+        """
+        Get team totals for a specific game
+        Returns dict: {home_team: line, away_team: line}
+        """
+        url = f"{self.base_url}/sports/{self.sport_key}/events/{event_id}/odds"
+        params = {
+            'apiKey': self.api_key,
+            'regions': 'us',
+            'markets': 'team_totals',
+            'oddsFormat': 'american',
+        }
+
+        response = requests.get(url, params=params)
+
+        # Track remaining requests
+        self.requests_remaining = response.headers.get('x-requests-remaining', 'Unknown')
+
+        if response.status_code != 200:
+            print(f"Warning: Could not fetch team totals for event {event_id}: {response.text}")
+            return None
+
+        event_data = response.json()
+        return self._parse_team_totals(event_data)
 
     def _parse_player_props(self, event_data):
         """
@@ -116,7 +141,9 @@ class OddsFetcher:
             'player_points': 'PTS',
             'player_rebounds': 'REB',
             'player_assists': 'AST',
-            'player_threes': 'FG3M'
+            'player_threes': 'FG3M',
+            'player_steals': 'STL',
+            'player_blocks': 'BLK'
         }
 
         if 'bookmakers' not in event_data or not event_data['bookmakers']:
@@ -155,6 +182,49 @@ class OddsFetcher:
                 player_props[player_name][stat_name] = line
 
         return player_props
+
+    def _parse_team_totals(self, event_data):
+        """
+        Parse team totals from API response
+        Returns dict: {team_name: line}
+
+        Example:
+        {
+            "Los Angeles Lakers": 112.5,
+            "Boston Celtics": 108.5
+        }
+        """
+        team_totals = {}
+
+        if 'bookmakers' not in event_data or not event_data['bookmakers']:
+            return team_totals
+
+        # Use first bookmaker (usually FanDuel)
+        bookmaker = event_data['bookmakers'][0]
+
+        if 'markets' not in bookmaker:
+            return team_totals
+
+        for market in bookmaker['markets']:
+            if market.get('key') != 'team_totals':
+                continue
+
+            # Process outcomes (each team has Over and Under)
+            for outcome in market.get('outcomes', []):
+                # Only process "Over" lines
+                if outcome.get('name') != 'Over':
+                    continue
+
+                team_name = outcome.get('description', '').strip()
+                line = outcome.get('point')
+
+                if not team_name or line is None:
+                    continue
+
+                # Add team total
+                team_totals[team_name] = line
+
+        return team_totals
 
     def get_all_player_props(self, delay=0.6):
         """
@@ -219,6 +289,58 @@ class OddsFetcher:
         print(f"{'='*60}\n")
 
         return all_props
+
+    def get_all_team_totals(self, delay=0.6):
+        """
+        Get team totals for all today's games
+        Returns dict: {team_name: line}
+
+        Args:
+            delay: Seconds to wait between API calls (respect rate limits)
+        """
+        print("\n" + "="*60)
+        print("Fetching Team Totals from The Odds API")
+        print("="*60)
+
+        # Step 1: Get today's games
+        games = self.get_todays_games()
+
+        if not games:
+            print("No games found")
+            return {}
+
+        # Step 2: Fetch team totals for each game
+        all_team_totals = {}
+        games_with_totals_count = 0
+
+        for i, game in enumerate(games, 1):
+            event_id = game.get('id')
+            home_team = game.get('home_team', 'Unknown')
+            away_team = game.get('away_team', 'Unknown')
+
+            print(f"\n[{i}/{len(games)}] {away_team} @ {home_team}")
+
+            team_totals = self.get_team_totals_for_game(event_id)
+
+            if team_totals:
+                games_with_totals_count += 1
+                print(f"  Found team totals for {len(team_totals)} teams (Requests remaining: {self.requests_remaining})")
+                # Merge into all_team_totals
+                all_team_totals.update(team_totals)
+            else:
+                print(f"  No team totals available (Requests remaining: {self.requests_remaining})")
+
+            # Rate limit: delay between requests
+            if i < len(games):
+                time.sleep(delay)
+
+        print(f"\n{'='*60}")
+        print(f"Games with team totals: {games_with_totals_count}")
+        print(f"Total teams with lines: {len(all_team_totals)}")
+        print(f"API Requests Remaining: {self.requests_remaining}/500 (Free Tier)")
+        print(f"{'='*60}\n")
+
+        return all_team_totals
 
 
 def main():
