@@ -41,3 +41,6 @@ dev_diary/
 .aws-sam/
 samconfig.toml
 response.json
+
+# Archive
+archive/
