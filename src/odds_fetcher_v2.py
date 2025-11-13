@@ -34,12 +34,13 @@ class OddsFetcher:
 
     def get_todays_games(self) -> List[Dict]:
         """
-        Get list of today's NBA games
+        Get list of today's NBA games (in US Eastern Time)
 
         Returns:
             List of game dicts with id, home_team, away_team, commence_time
         """
         from datetime import datetime, timezone, timedelta
+        from zoneinfo import ZoneInfo
 
         url = f"{self.base_url}/sports/{self.sport}/odds"
         params = {
@@ -56,18 +57,20 @@ class OddsFetcher:
 
         all_games = response.json()
 
-        # Filter to only today's games (in UTC)
-        now = datetime.now(timezone.utc)
+        # Filter to only today's games (in US Eastern Time)
+        eastern = ZoneInfo("America/New_York")
+        now = datetime.now(eastern)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
 
         games = []
         for game in all_games:
             commence_time = datetime.fromisoformat(game['commence_time'].replace('Z', '+00:00'))
-            if today_start <= commence_time < today_end:
+            commence_time_et = commence_time.astimezone(eastern)
+            if today_start <= commence_time_et < today_end:
                 games.append(game)
 
-        print(f"✓ Found {len(games)} NBA games today")
+        print(f"✓ Found {len(games)} NBA games today (ET)")
         print(f"  API Requests remaining: {self.requests_remaining}/20,000")
 
         return games
