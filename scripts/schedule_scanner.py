@@ -9,6 +9,10 @@ import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import subprocess
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add src to path
 sys.path.append('src')
