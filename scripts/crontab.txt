@@ -5,10 +5,10 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Daily scheduler - Runs at 8 AM PST (11 AM EST / 16:00 UTC)
+# Daily scheduler - Runs at 8 AM PST
 # Checks for today's games and schedules scanner 3 hours before first game
-0 16 * * * cd ~/Projects/flooorgang && venv/bin/python3 scripts/schedule_scanner.py >> logs/scheduler.log 2>&1
+0 8 * * * cd ~/Projects/flooorgang && venv/bin/python3 scripts/schedule_scanner.py >> logs/scheduler.log 2>&1
 
-# Results tracker - Runs at 9 AM PST next day (12 PM EST / 17:00 UTC)
+# Results tracker - Runs at 9 AM PST next day
 # Scores yesterday's picks with NBA stats (unscored only)
-0 17 * * * cd ~/Projects/flooorgang && bash scripts/run_results_tracker.sh >> logs/results.log 2>&1
+0 9 * * * cd ~/Projects/flooorgang && bash scripts/run_results_tracker.sh >> logs/results.log 2>&1
