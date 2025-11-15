@@ -98,15 +98,29 @@ def main():
     print(f"FLOOORGANG SCHEDULER - {datetime.now(ZoneInfo('America/Los_Angeles')).strftime('%Y-%m-%d %I:%M %p %Z')}")
     print("="*70)
 
-    # Get first game time
-    game_time = get_first_game_time()
+    try:
+        # Get first game time
+        game_time = get_first_game_time()
 
-    if not game_time:
-        print("No games today - skipping scanner")
-        return
+        if not game_time:
+            print("No games today - skipping scanner")
+            return
 
-    # Schedule scanner
-    schedule_scanner(game_time)
+        # Schedule scanner
+        schedule_scanner(game_time)
+
+    except Exception as e:
+        print(f"❌ Scheduler failed with error: {e}")
+
+        # Send error notification
+        import traceback
+        sys.path.append('src')
+        from notifier import notify_scheduler_error
+
+        tb = traceback.format_exc()
+        notify_scheduler_error(str(e), tb)
+
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
