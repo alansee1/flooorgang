@@ -8,6 +8,10 @@ import os
 import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
 def send_slack_notification(message, title=None, is_error=False):
