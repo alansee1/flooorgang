@@ -99,12 +99,18 @@ def notify_scanner_success(num_picks, top_picks=None, first_game_time=None, grap
     if top_picks and len(top_picks) > 0:
         message += f"\n\n*Top picks:*\n"
         for pick in top_picks[:4]:  # Limit to 4
-            pick_type = pick.get('pick_type', '').upper()
-            entity = pick.get('player_name') or pick.get('team_name')
-            stat = pick.get('stat_type', '')
+            # Handle both player and team picks
+            entity = pick.get('player') or pick.get('team')
+            stat = pick.get('stat', '')  # Player picks have 'stat'
+            pick_type = pick.get('type', '')  # Team picks have 'type' (OVER/UNDER)
             line = pick.get('line', 0)
-            floor = pick.get('floor', 0)
-            message += f"• {entity} {pick_type}{line} {stat} (floor: {floor})\n"
+            floor = pick.get('floor') or pick.get('ceiling', 0)
+
+            # Format: "Player AST O7.5" or "Team O125.5"
+            if stat:  # Player pick
+                message += f"• {entity} {stat} O{line} (floor: {floor})\n"
+            else:  # Team pick
+                message += f"• {entity} {pick_type} {line} (floor: {floor})\n"
 
     if graphic_path:
         message += f"\n📊 Graphic saved to: `{graphic_path}`"
