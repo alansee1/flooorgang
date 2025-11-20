@@ -21,8 +21,8 @@ def main():
     try:
         print(f"Starting NFL scanner at {datetime.now()}")
 
-        # Run scanner
-        scanner = NFLScanner(odds_threshold=-500, season=2025)
+        # Run scanner (with DB saving and graphics generation enabled)
+        scanner = NFLScanner(odds_threshold=-500, season=2025, save_to_db=True, create_graphic=True)
         picks = scanner.scan()
 
         # Get first game time
@@ -35,6 +35,9 @@ def main():
             pst = ZoneInfo("America/Los_Angeles")
             game_time_pst = game_time.astimezone(pst)
             first_game_time = f"{earliest_game['home_team']} vs {earliest_game['away_team']} at {game_time_pst.strftime('%I:%M %p %Z')}"
+
+        # Determine graphic path
+        graphic_path = f"graphics/flooorgang_nfl_picks_{datetime.now().strftime('%Y%m%d')}.png" if picks else None
 
         # Post to Twitter
         if picks:
@@ -69,15 +72,11 @@ def main():
 
                 tweet_text += f"\nFull card below 👇"
 
-                # For now, post text-only since we don't have NFL graphics yet
-                # TODO: Add NFL graphics support
-                response = twitter.client.create_tweet(text=tweet_text)
+                # Post tweet with graphic (note: post_with_image handles printing success/URL)
+                tweet_id = twitter.post_with_image(tweet_text, graphic_path)
 
-                tweet_id = response.data['id']
-                tweet_url = f"https://twitter.com/FlooorGang/status/{tweet_id}"
-
-                print(f"✅ Tweet posted successfully!")
-                print(f"🔗 {tweet_url}")
+                if not tweet_id:
+                    print(f"⚠️  Twitter post failed (check logs)")
 
             except Exception as e:
                 print(f"⚠️  Twitter post failed: {e}")
@@ -87,7 +86,7 @@ def main():
             num_picks=len(picks) if picks else 0,
             top_picks=picks[:4] if picks else None,
             first_game_time=first_game_time,
-            graphic_path=None  # No graphics for NFL yet
+            graphic_path=graphic_path
         )
 
         print(f"\nNFL Scanner completed successfully at {datetime.now()}")

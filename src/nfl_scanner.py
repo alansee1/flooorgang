@@ -53,14 +53,18 @@ TEAM_ABBR_MAP = {
 class NFLScanner:
     """Scans NFL games for 100%er opportunities"""
 
-    def __init__(self, odds_threshold: int = -500, season: int = 2025):
+    def __init__(self, odds_threshold: int = -500, season: int = 2025, save_to_db: bool = True, create_graphic: bool = True):
         """
         Args:
             odds_threshold: Skip picks with odds worse than this (default -500)
             season: NFL season year (default 2025)
+            save_to_db: Save results to database (default True)
+            create_graphic: Generate graphic image (default True)
         """
         self.odds_threshold = odds_threshold
         self.season = season
+        self.save_to_db = save_to_db
+        self.create_graphic = create_graphic
         self.odds_fetcher = NFLOddsFetcher()
         self.stats_analyzer = NFLStatsAnalyzer(season=season)
 
@@ -113,6 +117,35 @@ class NFLScanner:
                     print(f"  {i}. {pick['player']} {pick['stat']} O{pick['line']} @ {pick['odds']}")
                 else:
                     print(f"  {i}. {pick['team']} {pick['type']} {pick['line']} @ {pick['odds']}")
+
+            # Save to database if enabled
+            if self.save_to_db and all_picks:
+                print(f"\n💾 Saving to database...")
+                scan_date = date.today()
+                game_date = scan_date  # For NFL, game date = scan date (we scan day-of)
+
+                stats = {
+                    'analyzed': len(set([p.get('player') or p.get('team') for p in all_picks])),
+                    'skipped': 0
+                }
+
+                save_scanner_results(
+                    sport='nfl',
+                    scan_date=scan_date,
+                    picks=all_picks,
+                    stats=stats,
+                    game_date=game_date,
+                    api_requests_remaining=self.odds_fetcher.requests_remaining,
+                    season='2025-26'
+                )
+
+            # Create graphic if enabled
+            if self.create_graphic and all_picks:
+                print(f"\n🎨 Creating graphic...")
+                from nfl_graphics_generator import create_nfl_picks_graphic
+                graphic_path = create_nfl_picks_graphic(all_picks)
+                if graphic_path:
+                    print(f"✅ Graphic saved: {graphic_path}")
 
         return all_picks
 
