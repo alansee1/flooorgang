@@ -180,10 +180,10 @@ def draw_pick_row(ax, pick, y_pos, row_idx, row_height):
         else:
             name_display = entity_name
     else:
-        # For teams: drop city name if multi-word
+        # For teams: show just the team name (drop city)
         team_parts = entity_name.split()
-        if len(team_parts) > 2:
-            name_display = " ".join(team_parts[1:])
+        if len(team_parts) > 1:
+            name_display = team_parts[-1]  # Just the last word (team name)
         else:
             name_display = entity_name
 
