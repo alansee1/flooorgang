@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Score picks by fetching actual game results from NBA API
+Score picks by fetching actual game results from NBA and NFL APIs
 
 Usage:
   python score_picks.py                    # Score yesterday's picks
@@ -18,6 +18,27 @@ from nba_api.stats.static import players, teams
 from datetime import datetime, timedelta
 import time
 import argparse
+
+# NFL imports
+try:
+    import nflreadpy as nfl
+    import polars as pl
+    NFL_AVAILABLE = True
+except ImportError:
+    NFL_AVAILABLE = False
+    print("⚠️  Warning: nflreadpy not available. NFL scoring will be skipped.")
+
+# NFL stat type mappings (display name -> column name)
+NFL_STAT_MAP = {
+    'Pass Yds': 'passing_yards',
+    'Rush Yds': 'rushing_yards',
+    'Rec Yds': 'receiving_yards',
+    'Receptions': 'receptions',
+    'Pass TDs': 'passing_tds',
+    'Completions': 'completions',
+    'Attempts': 'attempts',
+    'PTS': 'PTS'  # Team totals
+}
 
 def get_player_id(player_name):
     """Get player ID from name (handles special characters)"""
@@ -117,6 +138,101 @@ def get_team_stats_for_date(team_name, date_str):
         print(f"  Error: {e}")
         return None
 
+
+# NFL stat fetching functions
+def get_nfl_player_stats_for_date(player_name, date_str):
+    """Fetch actual NFL stats for a player on a specific date
+
+    Args:
+        player_name: Player's display name
+        date_str: Date in YYYY-MM-DD format
+
+    Returns:
+        Dict with stat values or None if not found
+    """
+    if not NFL_AVAILABLE:
+        return None
+
+    try:
+        # Load player stats for 2025 season
+        player_stats = nfl.load_player_stats([2025])
+
+        # Load schedules to map date to week
+        schedules = nfl.load_schedules([2025])
+
+        # Find the week for this date
+        game = schedules.filter(pl.col('gameday') == date_str)
+        if len(game) == 0:
+            return None
+
+        week = game.select('week').to_series().to_list()[0]
+
+        # Find player's game for this week
+        player_games = player_stats.filter(
+            (pl.col('player_display_name') == player_name) &
+            (pl.col('week') == week)
+        )
+
+        if len(player_games) == 0:
+            return None
+
+        # Extract stats
+        game_row = player_games[0]
+
+        return {
+            'passing_yards': int(game_row['passing_yards'][0]) if game_row['passing_yards'][0] is not None else 0,
+            'rushing_yards': int(game_row['rushing_yards'][0]) if game_row['rushing_yards'][0] is not None else 0,
+            'receiving_yards': int(game_row['receiving_yards'][0]) if game_row['receiving_yards'][0] is not None else 0,
+            'receptions': int(game_row['receptions'][0]) if game_row['receptions'][0] is not None else 0,
+            'passing_tds': int(game_row['passing_tds'][0]) if game_row['passing_tds'][0] is not None else 0,
+            'completions': int(game_row['completions'][0]) if game_row['completions'][0] is not None else 0,
+            'attempts': int(game_row['attempts'][0]) if game_row['attempts'][0] is not None else 0
+        }
+    except Exception as e:
+        print(f"  Error fetching NFL player stats: {e}")
+        return None
+
+
+def get_nfl_team_stats_for_date(team_abbr, date_str):
+    """Fetch actual NFL team scoring for a specific date
+
+    Args:
+        team_abbr: Team abbreviation (e.g., 'BUF', 'HOU')
+        date_str: Date in YYYY-MM-DD format
+
+    Returns:
+        Dict with team points or None if not found
+    """
+    if not NFL_AVAILABLE:
+        return None
+
+    try:
+        # Load schedules
+        schedules = nfl.load_schedules([2025])
+
+        # Find game on this date where team played (home or away)
+        game = schedules.filter(
+            (pl.col('gameday') == date_str) &
+            ((pl.col('home_team') == team_abbr) | (pl.col('away_team') == team_abbr))
+        )
+
+        if len(game) == 0:
+            return None
+
+        # Get the team's score
+        game_row = game[0]
+        if game_row['home_team'][0] == team_abbr:
+            pts = int(game_row['home_score'][0])
+        else:
+            pts = int(game_row['away_score'][0])
+
+        return {
+            'PTS': pts
+        }
+    except Exception as e:
+        print(f"  Error fetching NFL team stats: {e}")
+        return None
+
 def main():
     parser = argparse.ArgumentParser(description='Score NBA picks for a specific date')
     parser.add_argument('date', nargs='?', help='Date in YYYY-MM-DD format (default: yesterday)')
@@ -179,21 +295,46 @@ def main():
         stat_type = pick['stat_type']
         line = float(pick['line'])
         bet_type = pick['bet_type']
+        sport = pick.get('sport', 'nba')  # Default to NBA for backwards compatibility
 
-        print(f"Scoring: {entity_name} - {stat_type} {bet_type} {line}")
+        print(f"Scoring [{sport.upper()}]: {entity_name} - {stat_type} {bet_type} {line}")
 
-        # Fetch actual stats
-        if entity_type == 'player':
-            stats = get_player_stats_for_date(entity_name, scan_date)
+        # Fetch actual stats based on sport
+        if sport == 'nba':
+            if entity_type == 'player':
+                stats = get_player_stats_for_date(entity_name, scan_date)
+            else:
+                stats = get_team_stats_for_date(entity_name, scan_date)
+        elif sport == 'nfl':
+            if entity_type == 'player':
+                stats = get_nfl_player_stats_for_date(entity_name, scan_date)
+            else:
+                # For NFL teams, entity_name is the team abbreviation
+                stats = get_nfl_team_stats_for_date(entity_name, scan_date)
         else:
-            stats = get_team_stats_for_date(entity_name, scan_date)
+            print(f"  ⚠️  Unknown sport: {sport}\n")
+            no_game_count += 1
+            continue
 
         if not stats:
             print(f"  ⚠️  No game found\n")
             no_game_count += 1
             continue
 
-        actual = stats[stat_type]
+        # Get actual value for the stat type
+        if sport == 'nfl':
+            # Use the mapping to convert display name to column name
+            stat_column = NFL_STAT_MAP.get(stat_type, stat_type.lower().replace(' ', '_'))
+            actual = stats.get(stat_column)
+        else:
+            # NBA uses uppercase stat types
+            actual = stats.get(stat_type)
+
+        if actual is None:
+            print(f"  ⚠️  Stat type '{stat_type}' not found in results\n")
+            no_game_count += 1
+            continue
+
         print(f"  Actual: {actual}")
 
         # Determine if hit

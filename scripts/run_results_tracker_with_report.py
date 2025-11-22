@@ -14,6 +14,18 @@ sys.path.append('src')
 from database_v2 import get_supabase_client
 from notifier import notify_results_tracker_success, notify_results_tracker_error
 
+# NFL stat type mappings (display name -> column name)
+NFL_STAT_MAP = {
+    'Pass Yds': 'passing_yards',
+    'Rush Yds': 'rushing_yards',
+    'Rec Yds': 'receiving_yards',
+    'Receptions': 'receptions',
+    'Pass TDs': 'passing_tds',
+    'Completions': 'completions',
+    'Attempts': 'attempts',
+    'PTS': 'PTS'  # Team totals
+}
+
 
 def score_picks(scan_date, unscored_only=False):
     """
@@ -22,7 +34,10 @@ def score_picks(scan_date, unscored_only=False):
     """
     # Import scoring functions from score_picks
     sys.path.append('scripts/results_tracking')
-    from score_picks import get_player_stats_for_date, get_team_stats_for_date
+    from score_picks import (
+        get_player_stats_for_date, get_team_stats_for_date,
+        get_nfl_player_stats_for_date, get_nfl_team_stats_for_date
+    )
     import time
 
     supabase = get_supabase_client()
@@ -58,20 +73,43 @@ def score_picks(scan_date, unscored_only=False):
         floor = float(pick['floor']) if pick.get('floor') is not None else None
         ceiling = float(pick['ceiling']) if pick.get('ceiling') is not None else None
         bet_type = pick['bet_type']
+        sport = pick.get('sport', 'nba')  # Default to NBA for backwards compatibility
 
-        print(f"Scoring: {entity_name} - {stat_type} {bet_type} {line}")
+        print(f"Scoring [{sport.upper()}]: {entity_name} - {stat_type} {bet_type} {line}")
 
-        # Fetch actual stats
-        if entity_type == 'player':
-            stats = get_player_stats_for_date(entity_name, scan_date)
+        # Fetch actual stats based on sport
+        if sport == 'nba':
+            if entity_type == 'player':
+                stats = get_player_stats_for_date(entity_name, scan_date)
+            else:
+                stats = get_team_stats_for_date(entity_name, scan_date)
+        elif sport == 'nfl':
+            if entity_type == 'player':
+                stats = get_nfl_player_stats_for_date(entity_name, scan_date)
+            else:
+                # For NFL teams, entity_name is the team abbreviation
+                stats = get_nfl_team_stats_for_date(entity_name, scan_date)
         else:
-            stats = get_team_stats_for_date(entity_name, scan_date)
+            print(f"  ⚠️  Unknown sport: {sport}\n")
+            continue
 
         if not stats:
             print(f"  ⚠️  No game found\n")
             continue
 
-        actual = stats[stat_type]
+        # Get actual value for the stat type
+        if sport == 'nfl':
+            # Use the mapping to convert display name to column name
+            stat_column = NFL_STAT_MAP.get(stat_type, stat_type.lower().replace(' ', '_'))
+            actual = stats.get(stat_column)
+        else:
+            # NBA uses uppercase stat types
+            actual = stats.get(stat_type)
+
+        if actual is None:
+            print(f"  ⚠️  Stat type '{stat_type}' not found in results\n")
+            continue
+
         print(f"  Actual: {actual}")
 
         # Determine if hit
