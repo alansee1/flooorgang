@@ -38,7 +38,8 @@ class NFLStatsAnalyzer:
     def get_player_floor(
         self,
         player_name: str,
-        stat_column: str
+        stat_column: str,
+        min_games: int = 4
     ) -> Optional[Dict]:
         """
         Calculate floor for a specific player and stat
@@ -46,6 +47,7 @@ class NFLStatsAnalyzer:
         Args:
             player_name: Player's display name
             stat_column: Stat to analyze (e.g., 'passing_yards', 'rushing_yards')
+            min_games: Minimum number of games required (default 4)
 
         Returns:
             Dict with {floor, games, history, average, maximum} or None if not found
@@ -66,6 +68,10 @@ class NFLStatsAnalyzer:
         if not stat_values or len(stat_values) == 0:
             return None
 
+        # Require minimum sample size
+        if len(stat_values) < min_games:
+            return None
+
         # Calculate floor (MINIMUM value)
         floor = min(stat_values)
 
@@ -79,13 +85,15 @@ class NFLStatsAnalyzer:
 
     def get_team_floor_ceiling(
         self,
-        team_abbr: str
+        team_abbr: str,
+        min_games: int = 4
     ) -> Optional[Dict]:
         """
         Calculate floor and ceiling for a team's scoring
 
         Args:
             team_abbr: Team abbreviation (e.g., 'BUF', 'HOU')
+            min_games: Minimum number of games required (default 4)
 
         Returns:
             Dict with {floor, ceiling, games, history, average} or None if not found
@@ -103,6 +111,10 @@ class NFLStatsAnalyzer:
         all_scores = home_scores + away_scores
 
         if not all_scores or len(all_scores) == 0:
+            return None
+
+        # Require minimum sample size
+        if len(all_scores) < min_games:
             return None
 
         return {
