@@ -52,8 +52,11 @@ def main():
                 tweet_text = f"🏈 NFL Picks - {date_str}\n\n"
                 tweet_text += f"{num_picks} plays identified\n\n"
 
+                # Sort by best odds (descending, matching graphic sort)
+                sorted_picks = sorted(picks, key=lambda p: p['odds'], reverse=True)
+
                 # Add top 3 picks as text
-                for i, pick in enumerate(picks[:3], 1):
+                for i, pick in enumerate(sorted_picks[:3], 1):
                     if 'player' in pick:
                         entity = pick['player']
                         stat = pick['stat']
