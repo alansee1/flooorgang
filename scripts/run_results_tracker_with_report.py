@@ -26,6 +26,42 @@ NFL_STAT_MAP = {
     'PTS': 'PTS'  # Team totals
 }
 
+# NFL team name to abbreviation mapping
+NFL_TEAM_TO_ABBR = {
+    'Arizona Cardinals': 'ARI',
+    'Atlanta Falcons': 'ATL',
+    'Baltimore Ravens': 'BAL',
+    'Buffalo Bills': 'BUF',
+    'Carolina Panthers': 'CAR',
+    'Chicago Bears': 'CHI',
+    'Cincinnati Bengals': 'CIN',
+    'Cleveland Browns': 'CLE',
+    'Dallas Cowboys': 'DAL',
+    'Denver Broncos': 'DEN',
+    'Detroit Lions': 'DET',
+    'Green Bay Packers': 'GB',
+    'Houston Texans': 'HOU',
+    'Indianapolis Colts': 'IND',
+    'Jacksonville Jaguars': 'JAX',
+    'Kansas City Chiefs': 'KC',
+    'Las Vegas Raiders': 'LV',
+    'Los Angeles Chargers': 'LAC',
+    'Los Angeles Rams': 'LA',
+    'Miami Dolphins': 'MIA',
+    'Minnesota Vikings': 'MIN',
+    'New England Patriots': 'NE',
+    'New Orleans Saints': 'NO',
+    'New York Giants': 'NYG',
+    'New York Jets': 'NYJ',
+    'Philadelphia Eagles': 'PHI',
+    'Pittsburgh Steelers': 'PIT',
+    'San Francisco 49ers': 'SF',
+    'Seattle Seahawks': 'SEA',
+    'Tampa Bay Buccaneers': 'TB',
+    'Tennessee Titans': 'TEN',
+    'Washington Commanders': 'WAS'
+}
+
 
 def score_picks(scan_date, unscored_only=False):
     """
@@ -87,8 +123,9 @@ def score_picks(scan_date, unscored_only=False):
             if entity_type == 'player':
                 stats = get_nfl_player_stats_for_date(entity_name, scan_date)
             else:
-                # For NFL teams, entity_name is the team abbreviation
-                stats = get_nfl_team_stats_for_date(entity_name, scan_date)
+                # For NFL teams, convert full name to abbreviation
+                team_abbr = NFL_TEAM_TO_ABBR.get(entity_name, entity_name)
+                stats = get_nfl_team_stats_for_date(team_abbr, scan_date)
         else:
             print(f"  ⚠️  Unknown sport: {sport}\n")
             continue
