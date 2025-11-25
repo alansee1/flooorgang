@@ -196,7 +196,8 @@ class NFLScanner:
                             'odds': best_line['odds'],
                             'games': floor_data['games'],
                             'hit_rate': f"{floor_data['games']}/{floor_data['games']}",
-                            'game_history': floor_data['history']
+                            'game_history': floor_data['history'],
+                            'team_abbr': floor_data.get('team_abbr')
                         })
 
                         print(f"  ✅ {player_name} {stat_display} O{best_line['line']} @ {best_line['odds']}")
@@ -250,7 +251,8 @@ class NFLScanner:
                         'odds': best_over['odds'],
                         'games': team_data['games'],
                         'hit_rate': f"{team_data['games']}/{team_data['games']}",
-                        'game_history': team_data['history']
+                        'game_history': team_data['history'],
+                        'team_abbr': team_abbr
                     })
                     print(f"  ✅ {team_name} OVER {best_over['line']} @ {best_over['odds']}")
 
@@ -269,7 +271,8 @@ class NFLScanner:
                         'odds': best_under['odds'],
                         'games': team_data['games'],
                         'hit_rate': f"{team_data['games']}/{team_data['games']}",
-                        'game_history': team_data['history']
+                        'game_history': team_data['history'],
+                        'team_abbr': team_abbr
                     })
                     print(f"  ✅ {team_name} UNDER {best_under['line']} @ {best_under['odds']}")
 

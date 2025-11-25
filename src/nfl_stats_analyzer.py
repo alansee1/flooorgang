@@ -50,7 +50,7 @@ class NFLStatsAnalyzer:
             min_games: Minimum number of games required (default 4)
 
         Returns:
-            Dict with {floor, games, history, average, maximum} or None if not found
+            Dict with {floor, games, history, average, maximum, team_abbr} or None if not found
         """
         self.load_player_stats()
 
@@ -75,12 +75,16 @@ class NFLStatsAnalyzer:
         # Calculate floor (MINIMUM value)
         floor = min(stat_values)
 
+        # Get player's team (use most recent game's team)
+        team_abbr = player_games.select('team').to_series().to_list()[0] if 'team' in player_games.columns else None
+
         return {
             'floor': floor,
             'games': len(stat_values),
             'history': stat_values,
             'average': sum(stat_values) / len(stat_values),
-            'maximum': max(stat_values)
+            'maximum': max(stat_values),
+            'team_abbr': team_abbr
         }
 
     def get_team_floor_ceiling(
