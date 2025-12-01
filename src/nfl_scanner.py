@@ -135,7 +135,7 @@ class NFLScanner:
                     picks=all_picks,
                     stats=stats,
                     game_date=game_date,
-                    api_requests_remaining=self.odds_fetcher.requests_remaining,
+                    api_requests_remaining=int(float(self.odds_fetcher.requests_remaining)) if self.odds_fetcher.requests_remaining else None,
                     season='2025-26'
                 )
 

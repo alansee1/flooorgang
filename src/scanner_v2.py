@@ -309,7 +309,7 @@ class Scanner:
                 scan_date=date.today(),
                 picks=all_picks,
                 stats=stats,
-                api_requests_remaining=int(self.odds_fetcher.requests_remaining) if self.odds_fetcher.requests_remaining else None,
+                api_requests_remaining=int(float(self.odds_fetcher.requests_remaining)) if self.odds_fetcher.requests_remaining else None,
                 season=self.season
             )
 
